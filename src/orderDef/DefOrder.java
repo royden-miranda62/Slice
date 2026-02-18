@@ -13,6 +13,10 @@ class MenuItem {
     }
 }
 
+// important variables (for next step):
+// - orderCount: array; stores number of times each item was chosen in an order.
+// - selectedItems: 2D array; stores order for each person.
+
 public class DefOrder {
     public static void main(String[] args) {
         Scanner inp = new Scanner(System.in);
@@ -36,7 +40,7 @@ public class DefOrder {
             orderCount[item] = 0;
 
         // 2d array to store orders for each person
-        // [i][j]: i identifies a person, j identifies an order
+        // [i][j]: `i` identifies a person, `j` identifies an item in a person's order
         MenuItem[][] selectedItems = new MenuItem[numOfPeople][menuSize];
         MenuItem slcItem;
 
@@ -53,7 +57,7 @@ public class DefOrder {
                         (i + 1) + ".", menu[i].itemName, menu[i].itemQty);
             System.out.printf("--------------------\n");
 
-            // item stack to hold items for each person, gets reset on every iteration
+            // item stack to hold items in an order, gets reset on every iteration
             MenuItem[] itmStack = new MenuItem[menuSize];
             int top = -1;
 
@@ -102,8 +106,6 @@ public class DefOrder {
             // adding items to 2d array
             selectedItems[person] = itmStack;
         }
-
-        
 
         inp.close();
     }
