@@ -44,23 +44,25 @@ public class DefOrder {
         MenuItem[][] selectedItems = new MenuItem[numOfPeople][menuSize];
         MenuItem slcItem;
 
+        // accepting orders for each person
         for (int person = 0; person < numOfPeople; person++) {
             System.out.println("Name: " + people[person]);
 
             // displaying menu
             System.out.println("Menu: ");
-            System.out.printf("--------------------\n");
-            System.out.printf("| No. | Item | Qty |\n");
-            System.out.printf("--------------------\n");
+            System.out.printf("-----------------------\n");
+            System.out.printf("| No.  | Item  | Qty  |\n");
+            System.out.printf("-----------------------\n");
             for (int i = 0; i < menu.length; i++)
-                System.out.printf("| %-2s | %-4s | %-2s |\n",
+                System.out.printf("| %-4s | %-4s | %-4s |\n",
                         (i + 1) + ".", menu[i].itemName, menu[i].itemQty);
-            System.out.printf("--------------------\n");
+            System.out.printf("-----------------------\n");
 
             // item stack to hold items in an order, gets reset on every iteration
-            MenuItem[] itmStack = new MenuItem[menuSize];
+            MenuItem[] itemStack = new MenuItem[menuSize];
             int top = -1;
 
+            // accepting items in order
             while (true) {
                 System.out.print("Choose item with quantity: ");
                 int itm = inp.nextInt();
@@ -79,7 +81,7 @@ public class DefOrder {
                     curItem.itemQty -= qty;
 
                     slcItem = new MenuItem(curItem.itemName, qty);
-                    itmStack[++top] = slcItem;
+                    itemStack[++top] = slcItem;
                 }
 
                 System.out.print("Add more? (y/n): ");
@@ -94,17 +96,16 @@ public class DefOrder {
 
             // displaying person's order
             System.out.println("\n" + people[person] + "'s Order: ");
-
-            System.out.print("--------------\n");
-            System.out.print("| Item | Qty |\n");
-            System.out.print("--------------\n");
-            for (int i = 0; i < itmStack.length - 1; i++)
-                System.out.printf("| %-5s | %-2s |\n",
-                        itmStack[i].itemName, itmStack[i].itemQty);
-            System.out.print("--------------\n");
+            System.out.print("----------------\n");
+            System.out.print("| Item  | Qty  |\n");
+            System.out.print("----------------\n");
+            for (int i = 0; i < top + 1; i++)
+                System.out.printf("| %-4s | %-4s |\n",
+                        itemStack[i].itemName, itemStack[i].itemQty);
+            System.out.print("----------------\n\n");
 
             // adding items to 2d array
-            selectedItems[person] = itmStack;
+            selectedItems[person] = itemStack;
         }
 
         inp.close();
