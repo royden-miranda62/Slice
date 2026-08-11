@@ -1,3 +1,5 @@
+import tabulate as tb
+
 """GLOBAL DATA STRUCTURES"""
 
 # `people` stores the names of the people involved
@@ -16,20 +18,23 @@ menu = []
 # corresponds to a person in `people`.
 orders = []
 
+
+"""FUNCTIONS"""
+
+
 """STAGE 1 - PEOPLE"""
 
 num_people = int(input("Enter the number of people: "))
 print("Enter their names: ")
 for i in range(num_people):
-    name = input()
-    people.append(name.title())
+    name = input("    -> ")
+    people.append(name.title().strip())
+people.sort()  # sorting the list for fixed indexing.
 
-people.sort()  # sorting the list for fixed identification.
-
-print("Who paid?")
+print(f"Who paid? (1-{num_people})")
 for id, person in enumerate(people, start=1):
     print(f"{id}. {person}")
-payer_id = int(input())
+payer_id = int(input("    -> "))
 
 tuple(people)  # converting the list into a tuple to make it immutable.
 
@@ -38,17 +43,16 @@ print()
 
 """ STAGE 2 - MENU """
 
+print("Enter menu items: \n")
 while True:
-    print("Enter menu items: \n")
-
-    item_name = input("Item Name: ")
+    item_name = input("Item Name: ").title().strip()
     item_price = float(input("Price: "))
     total_qty = int(input("Quantity Ordered: "))
 
     total_price = item_price * total_qty
-    order_qty = 0
+    remaining_qty = total_qty
 
-    menu.append([item_name, item_price, total_qty, total_price, order_qty])
+    menu.append([item_name, item_price, total_qty, total_price, remaining_qty])
     print()
 
     add_more_choice = input("Add more items? (Y/N): ")
@@ -63,20 +67,27 @@ print()
 """ STAGE 3 - ORDER """
 
 for person in people:
-    print(person)
+    print(f"        {person}'s Order:")
 
     order = []
 
     while True:
-        print("Menu")
+        print("    Menu")
         for id, item in enumerate(menu, start=1):
-            print(f"{id}. {item}")
+            print(f"{id}. {item[0]} {item[4]}")
 
         item_id = int(input(f"Choose item (1-{len(menu)}): "))
         qty_chosen = int(input("Enter quantity: "))
 
-        item_chosen = menu[item_id - 1] # mapping the chosen item to the menu
-        
+        item_chosen = menu[item_id - 1]  # mapping the chosen item to the menu
+
+        # subtracting chosen quantity from remaining quantity
+        item_chosen[4] -= qty_chosen
+        if qty_chosen >= 0:
+            print(f"{item_chosen[0]} added.")
+        else:
+            print(f"Cannot add {qty_chosen} of {item_chosen[0]}.")
+
         order.append((item_chosen, qty_chosen))
 
         print()
@@ -84,5 +95,7 @@ for person in people:
         add_more_choice = input("Add more items? (Y/N): ")
         if add_more_choice in "nN":
             break
+
+        print()
 
     orders.append(order)
