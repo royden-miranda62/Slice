@@ -45,14 +45,16 @@ print()
 
 print("Enter menu items: \n")
 while True:
-    item_name = input("Item Name: ").title().strip()
+    item_name = input("Item name: ").title().strip()
     item_price = float(input("Price: "))
-    total_qty = int(input("Quantity Ordered: "))
+    total_qty = int(input("Quantity ordered: "))
+    split_choice = input("Item shared? (Y/N): ")
 
     total_price = item_price * total_qty
-    remaining_qty = total_qty
+    split_flag = True if split_choice in "yY" else False
+    ordered_qty = 0
 
-    menu.append([item_name, item_price, total_qty, total_price, remaining_qty])
+    menu.append([item_name, item_price, total_qty, total_price, split_flag, ordered_qty])
     print()
 
     add_more_choice = input("Add more items? (Y/N): ")
@@ -73,20 +75,35 @@ for person in people:
 
     while True:
         print("    Menu")
+        print("No.\tItem Name\tRemaining Quantity")
         for id, item in enumerate(menu, start=1):
-            print(f"{id}. {item[0]} {item[4]}")
+            print(f"{id}.\t{item[0]}\t{item[4]}")
 
         item_id = int(input(f"Choose item (1-{len(menu)}): "))
-        qty_chosen = int(input("Enter quantity: "))
+        while True: 
+            qty_chosen = int(input("Enter quantity: "))
+            if qty_chosen <= 0:
+                print("Invalid quantity.")
+            else:
+                break
+            
 
         item_chosen = menu[item_id - 1]  # mapping the chosen item to the menu
 
-        # subtracting chosen quantity from remaining quantity
-        item_chosen[4] -= qty_chosen
-        if qty_chosen >= 0:
+        # item index reference: 
+        # 0 = item name ; 1 = item price ; 2 = total quantity
+        # 3 = total price ; 4 = split flag ; 5 = ordered quantity
+        
+        if item_chosen[4] == True:
+            item_chosen[5] += qty_chosen
             print(f"{item_chosen[0]} added.")
-        else:
-            print(f"Cannot add {qty_chosen} of {item_chosen[0]}.")
+        else: 
+            # subtracting chosen quantity from remaining quantity
+            item_chosen[5] += qty_chosen
+            if qty_chosen >= item_chosen[2]:
+                print(f"{item_chosen[0]} added.")
+            else:
+                print(f"Cannot add {qty_chosen} of {item_chosen[0]}.")
 
         order.append((item_chosen, qty_chosen))
 
@@ -99,3 +116,5 @@ for person in people:
         print()
 
     orders.append(order)
+
+print(orders)
