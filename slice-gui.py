@@ -1,26 +1,51 @@
 import customtkinter as ctk
 from tkinter import messagebox
+from tkcalendar import Calendar
 
 # Set CustomTkinter theme and appearance mode
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
-# Styling Constants (#212121 background with clean white outline design)
-BG_COLOR = "#212121"
-CARD_BG = "#2B2B2B"
-INPUT_BG = "#2B2B2B"
-BORDER_COLOR = "#FFFFFF"
-TEXT_COLOR = "#FFFFFF"
-HOVER_COLOR = "#383838"
-DISABLED_COLOR = "#555555"
-DELETE_COLOR = "#FF5555"
+# User Specification & PSD Extracted Color Palette & Constants
+BG_COLOR = "#172a3b"
+INPUT_BG = "#41596e"
+BORDER_COLOR = "#ffffff"
+TEXT_COLOR = "#ffffff"
+MUTED_TEXT_COLOR = "#7f91a1"
+HOVER_COLOR = "#526d85"
+DISABLED_COLOR = "#2a3d4e"
+DELETE_COLOR = "#ff5555"
 
-FONT_TITLE = ("Arial", 52, "bold")
-FONT_SUBTITLE = ("Arial", 22)
-FONT_LABEL = ("Arial", 16, "bold")
-FONT_INPUT = ("Arial", 16)
-FONT_BUTTON = ("Arial", 16, "bold")
-FONT_NAV = ("Arial", 28, "bold")
+CORNER_RADIUS = 8
+INPUT_HEIGHT = 40
+ROW_GAP = 10
+
+# Exact PostScript Fonts Extracted from section mockups.psd
+FONT_HEADER_FAMILY = "FatboldSlimRegular"
+FONT_BODY_FAMILY = "AloeveraDisplay-Light"
+FONT_REGULAR_FAMILY = "AloeveraDisplay-Regular"
+FONT_ITALIC_FAMILY = "AloeveraDisplay-Lightitalic"
+FONT_BLACK_FAMILY = "AloeveraDisplay-Black"
+
+
+def get_header_font(size=60):
+    return ctk.CTkFont(family=FONT_HEADER_FAMILY, size=size, weight="normal")
+
+
+def get_body_font(size=14, weight="normal"):
+    return ctk.CTkFont(family=FONT_BODY_FAMILY, size=size, weight=weight)
+
+
+def get_label_font(size=16, weight="normal"):
+    return ctk.CTkFont(family=FONT_REGULAR_FAMILY, size=size, weight=weight)
+
+
+def get_subtitle_font(size=18, slant="italic"):
+    return ctk.CTkFont(family=FONT_ITALIC_FAMILY, size=size, slant=slant)
+
+
+def get_black_font(size=44):
+    return ctk.CTkFont(family=FONT_BLACK_FAMILY, size=size, weight="normal")
 
 
 class SliceApp(ctk.CTk):
@@ -28,10 +53,13 @@ class SliceApp(ctk.CTk):
         super().__init__()
 
         self.title("Slice - Bill Splitter")
-        self.geometry("1920x1440")
+        self.geometry("960x720")
+        self.minsize(800, 600)
         self.configure(fg_color=BG_COLOR)
 
         # Global Application Data
+        self.venue = ""
+        self.date = ""
         self.people = []  # Sorted list of names
         self.payer = ""  # Selected payer
         self.menu_items = (
@@ -41,17 +69,19 @@ class SliceApp(ctk.CTk):
         self.orders = {}  # Dict: person_name -> list of dicts [{"item_name", "qty"}]
         self.current_person_idx = 0  # Index for order stage navigation
 
-        # Main Screen Container
+        # Main Screen Container (Dynamic grid scaling)
         self.container = ctk.CTkFrame(self, fg_color=BG_COLOR)
         self.container.pack(fill="both", expand=True)
 
-        self.show_screen("PeopleScreen")
+        self.show_screen("WelcomeScreen")
 
     def show_screen(self, screen_name):
         for widget in self.container.winfo_children():
             widget.destroy()
 
-        if screen_name == "PeopleScreen":
+        if screen_name == "WelcomeScreen":
+            screen = WelcomeScreen(self.container, self)
+        elif screen_name == "PeopleScreen":
             screen = PeopleScreen(self.container, self)
         elif screen_name == "MenuScreen":
             screen = MenuScreen(self.container, self)
@@ -72,7 +102,6 @@ class SliceApp(ctk.CTk):
         tax_per_person = self.tax_amount / num_people
         bills = {p: tax_per_person for p in self.people}
 
-        # Calculate total ordered quantity across all people for each item
         total_ordered_qty = {m["name"]: 0 for m in self.menu_items}
         for person, order_list in self.orders.items():
             for item in order_list:
@@ -81,7 +110,6 @@ class SliceApp(ctk.CTk):
                 if iname in total_ordered_qty:
                     total_ordered_qty[iname] += iqty
 
-        # Calculate per-person bill contribution
         for person, order_list in self.orders.items():
             for item in order_list:
                 iname = item["item_name"]
@@ -107,100 +135,110 @@ class SliceApp(ctk.CTk):
 
 
 # ==========================================
-# SCREEN 1: PEOPLE
+# SCREEN 0: WELCOME / MAIN MENU
 # ==========================================
-class PeopleScreen(ctk.CTkFrame):
+class WelcomeScreen(ctk.CTkFrame):
     def __init__(self, parent, app: SliceApp):
         super().__init__(parent, fg_color=BG_COLOR)
         self.app = app
 
-        # Static Header Title (Remains fixed at top when scrolling)
-        header_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        header_frame.pack(fill="x", padx=40, pady=(30, 10))
-
-        title_label = ctk.CTkLabel(
-            header_frame, text="PEOPLE", font=FONT_TITLE, text_color=TEXT_COLOR
-        )
-        title_label.pack(anchor="w")
-
-        # Scrollable Content Frame
+        # Scrollable Frame for dynamic responsiveness
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=BG_COLOR)
-        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(10, 10))
+        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=40)
+
+        # Large Sliced Logo Title
+        logo_label = ctk.CTkLabel(
+            self.scroll_frame,
+            text="SLICE",
+            font=get_header_font(120),
+            text_color=TEXT_COLOR,
+        )
+        logo_label.pack(pady=(40, 5))
+
+        slogan_label = ctk.CTkLabel(
+            self.scroll_frame,
+            text="A user-friendly  bill splitter",
+            font=get_subtitle_font(20, slant="italic"),
+            text_color=TEXT_COLOR,
+        )
+        slogan_label.pack(pady=(0, 40))
 
         content_box = ctk.CTkFrame(self.scroll_frame, fg_color=BG_COLOR)
         content_box.pack(fill="x", expand=True)
 
-        subtitle = ctk.CTkLabel(
-            content_box,
-            text="Add people to the split:",
-            font=FONT_SUBTITLE,
-            text_color=TEXT_COLOR,
+        # Venue Input
+        venue_label = ctk.CTkLabel(
+            content_box, text="Venue", font=get_label_font(18), text_color=TEXT_COLOR
         )
-        subtitle.pack(pady=(10, 20))
+        venue_label.pack(pady=(10, 5))
 
-        # Dynamic People Inputs Container
-        self.people_inputs_frame = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
-        self.people_inputs_frame.pack(fill="x", pady=10)
-
-        self.person_entries = []
-
-        # 1 entry by default (empty with placeholder text)
-        initial_people = self.app.people if self.app.people else [""]
-        for name in initial_people:
-            self.add_person_entry(name)
-
-        # Add Person Button
-        add_btn = ctk.CTkButton(
+        self.venue_entry = ctk.CTkEntry(
             content_box,
-            text="+ Add person",
-            font=FONT_BUTTON,
+            placeholder_text="Venue",
+            font=get_body_font(14),
+            fg_color=INPUT_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            text_color=TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            width=320,
+            height=INPUT_HEIGHT,
+            justify="center",
+        )
+        if self.app.venue:
+            self.venue_entry.insert(0, self.app.venue)
+        self.venue_entry.pack(pady=(0, 20))
+
+        # Date Input with Calendar Menu Button
+        date_label = ctk.CTkLabel(
+            content_box, text="Date", font=get_label_font(18), text_color=TEXT_COLOR
+        )
+        date_label.pack(pady=(10, 5))
+
+        date_frame = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
+        date_frame.pack(pady=(0, 20))
+
+        self.date_entry = ctk.CTkEntry(
+            date_frame,
+            placeholder_text="Date (YYYY-MM-DD)",
+            font=get_body_font(14),
+            fg_color=INPUT_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            text_color=TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            width=270,
+            height=INPUT_HEIGHT,
+            justify="center",
+        )
+        if self.app.date:
+            self.date_entry.insert(0, self.app.date)
+        self.date_entry.pack(side="left", padx=(0, 5))
+
+        cal_btn = ctk.CTkButton(
+            date_frame,
+            text="📅",
+            font=("Arial", 16),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=450,
-            height=45,
-            command=lambda: self.add_person_entry(""),
+            corner_radius=CORNER_RADIUS,
+            width=45,
+            height=INPUT_HEIGHT,
+            command=self.open_calendar_popup,
         )
-        add_btn.pack(pady=15)
+        cal_btn.pack(side="left")
 
-        # Who Paid Section
-        who_paid_label = ctk.CTkLabel(
-            content_box, text="Who paid?", font=FONT_SUBTITLE, text_color=TEXT_COLOR
-        )
-        who_paid_label.pack(pady=(30, 15))
-
-        self.payer_var = ctk.StringVar(
-            value=self.app.payer if self.app.payer else "Select"
-        )
-        self.payer_dropdown = ctk.CTkOptionMenu(
-            content_box,
-            variable=self.payer_var,
-            values=["Select"],
-            font=FONT_INPUT,
-            dropdown_font=FONT_INPUT,
-            fg_color=INPUT_BG,
-            button_color=INPUT_BG,
-            button_hover_color=HOVER_COLOR,
-            text_color=TEXT_COLOR,
-            dropdown_text_color=TEXT_COLOR,
-            dropdown_fg_color=INPUT_BG,
-            width=450,
-            height=45,
-            dynamic_resizing=False,
-        )
-        self.payer_dropdown.pack(pady=10)
-        self.update_dropdown_options()
-
-        # Fixed Navigation Footer
+        # Navigation Footer
         nav_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
         nav_frame.pack(fill="x", padx=40, pady=20, side="bottom")
 
         next_btn = ctk.CTkButton(
             nav_frame,
-            text="Next",
-            font=FONT_NAV,
+            text="NEXT",
+            font=get_header_font(22),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
@@ -210,43 +248,221 @@ class PeopleScreen(ctk.CTkFrame):
         )
         next_btn.pack(side="right")
 
+    def open_calendar_popup(self):
+        top = ctk.CTkToplevel(self)
+        top.title("Select Date")
+        top.geometry("320x340")
+        top.configure(fg_color=BG_COLOR)
+        top.grab_set()
+
+        cal = Calendar(
+            top,
+            selectmode="day",
+            background=BG_COLOR,
+            disabledbackground=BG_COLOR,
+            bordercolor=BORDER_COLOR,
+            headersbackground=INPUT_BG,
+            headersforeground=TEXT_COLOR,
+            selectbackground=MUTED_TEXT_COLOR,
+            selectforeground=TEXT_COLOR,
+            normalbackground=BG_COLOR,
+            normalforeground=TEXT_COLOR,
+            weekendbackground=BG_COLOR,
+            weekendforeground=TEXT_COLOR,
+            date_pattern="yyyy-mm-dd",
+        )
+        cal.pack(pady=15, padx=15, fill="both", expand=True)
+
+        def set_date():
+            self.date_entry.delete(0, "end")
+            self.date_entry.insert(0, cal.get_date())
+            top.destroy()
+
+        confirm_btn = ctk.CTkButton(
+            top,
+            text="Select Date",
+            font=get_label_font(14),
+            fg_color=INPUT_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            height=35,
+            command=set_date,
+        )
+        confirm_btn.pack(pady=(0, 15))
+
+    def go_next(self):
+        venue = self.venue_entry.get().strip()
+        date_str = self.date_entry.get().strip()
+
+        self.app.venue = venue
+        self.app.date = date_str
+        self.app.show_screen("PeopleScreen")
+
+
+# ==========================================
+# SCREEN 1: PEOPLE ("START THE PARTY")
+# ==========================================
+class PeopleScreen(ctk.CTkFrame):
+    def __init__(self, parent, app: SliceApp):
+        super().__init__(parent, fg_color=BG_COLOR)
+        self.app = app
+
+        # Static Header Title
+        header_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
+        header_frame.pack(fill="x", padx=40, pady=(25, 5))
+
+        title_label = ctk.CTkLabel(
+            header_frame,
+            text="START THE PARTY",
+            font=get_header_font(64),
+            text_color=TEXT_COLOR,
+        )
+        title_label.pack(anchor="w")
+
+        # Scrollable Content Frame
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=BG_COLOR)
+        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(5, 5))
+
+        content_box = ctk.CTkFrame(self.scroll_frame, fg_color=BG_COLOR)
+        content_box.pack(fill="x", expand=True)
+
+        subtitle = ctk.CTkLabel(
+            content_box,
+            text="Add people to the split:",
+            font=get_label_font(18),
+            text_color=TEXT_COLOR,
+        )
+        subtitle.pack(pady=(10, 15))
+
+        # Dynamic People Inputs Container
+        self.people_inputs_frame = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
+        self.people_inputs_frame.pack(fill="x", pady=5)
+
+        self.person_entries = []
+
+        initial_people = self.app.people if self.app.people else [""]
+        for name in initial_people:
+            self.add_person_entry(name)
+
+        # Add Person Button
+        add_btn = ctk.CTkButton(
+            content_box,
+            text="+ Add person",
+            font=get_body_font(14, "bold"),
+            fg_color=INPUT_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            hover_color=HOVER_COLOR,
+            text_color=MUTED_TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            width=360,
+            height=INPUT_HEIGHT,
+            command=lambda: self.add_person_entry(""),
+        )
+        add_btn.pack(pady=12)
+
+        # Who Paid Section
+        who_paid_label = ctk.CTkLabel(
+            content_box,
+            text="Who paid?",
+            font=get_label_font(18),
+            text_color=TEXT_COLOR,
+        )
+        who_paid_label.pack(pady=(20, 10))
+
+        self.payer_var = ctk.StringVar(
+            value=self.app.payer if self.app.payer else "Select"
+        )
+        self.payer_dropdown = ctk.CTkOptionMenu(
+            content_box,
+            variable=self.payer_var,
+            values=["Select"],
+            font=get_body_font(14),
+            dropdown_font=get_body_font(14),
+            fg_color=INPUT_BG,
+            button_color=INPUT_BG,
+            button_hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
+            dropdown_text_color=TEXT_COLOR,
+            dropdown_fg_color=INPUT_BG,
+            corner_radius=CORNER_RADIUS,
+            width=360,
+            height=INPUT_HEIGHT,
+            dynamic_resizing=False,
+        )
+        self.payer_dropdown.pack(pady=5)
+        self.update_dropdown_options()
+
+        # Navigation Footer
+        nav_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
+        nav_frame.pack(fill="x", padx=40, pady=15, side="bottom")
+
+        prev_btn = ctk.CTkButton(
+            nav_frame,
+            text="PREV",
+            font=get_header_font(20),
+            fg_color="transparent",
+            hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
+            width=90,
+            height=35,
+            command=self.go_prev,
+        )
+        prev_btn.pack(side="left")
+
+        next_btn = ctk.CTkButton(
+            nav_frame,
+            text="NEXT",
+            font=get_header_font(20),
+            fg_color="transparent",
+            hover_color=HOVER_COLOR,
+            text_color=TEXT_COLOR,
+            width=90,
+            height=35,
+            command=self.go_next,
+        )
+        next_btn.pack(side="right")
+
     def add_person_entry(self, default_text=""):
-        row_index = len(self.person_entries) + 1
+        row_idx = len(self.person_entries) + 1
         row_frame = ctk.CTkFrame(self.people_inputs_frame, fg_color=BG_COLOR)
-        row_frame.pack(pady=6)
+        row_frame.pack(pady=ROW_GAP // 2)
 
         entry = ctk.CTkEntry(
             row_frame,
-            placeholder_text=f"Name",
-            font=FONT_INPUT,
+            placeholder_text="Name",
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=450,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=360,
+            height=INPUT_HEIGHT,
             justify="center",
         )
         if default_text:
             entry.insert(0, default_text)
-        entry.pack(side="left", padx=(35, 5))
+        entry.pack(side="left", padx=(30, 5))
         entry.bind("<KeyRelease>", lambda e: self.update_dropdown_options())
 
         del_btn = ctk.CTkButton(
             row_frame,
             text="✕",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             fg_color="transparent",
             hover_color="#441111",
             text_color=BG_COLOR,
-            width=30,
-            height=45,
+            width=25,
+            height=INPUT_HEIGHT,
             corner_radius=4,
             command=lambda: self.remove_person_entry(row_frame, entry),
         )
-        del_btn.pack(side="left", padx=5)
+        del_btn.pack(side="left", padx=2)
 
-        # Hover events to reveal delete button
         def on_enter(e):
             del_btn.configure(text_color=DELETE_COLOR)
 
@@ -288,6 +504,9 @@ class PeopleScreen(ctk.CTkFrame):
         if current_val not in names:
             self.payer_var.set("Select")
 
+    def go_prev(self):
+        self.app.show_screen("WelcomeScreen")
+
     def go_next(self):
         names = []
         for entry in self.person_entries:
@@ -311,25 +530,28 @@ class PeopleScreen(ctk.CTkFrame):
 
 
 # ==========================================
-# SCREEN 2: MENU
+# SCREEN 2: MENU ("TONIGHT'S SPECIALS")
 # ==========================================
 class MenuScreen(ctk.CTkFrame):
     def __init__(self, parent, app: SliceApp):
         super().__init__(parent, fg_color=BG_COLOR)
         self.app = app
 
-        # Static Header Title (Remains fixed at top when scrolling)
+        # Static Header Title
         header_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        header_frame.pack(fill="x", padx=40, pady=(30, 10))
+        header_frame.pack(fill="x", padx=40, pady=(25, 5))
 
         title_label = ctk.CTkLabel(
-            header_frame, text="MENU", font=FONT_TITLE, text_color=TEXT_COLOR
+            header_frame,
+            text="TONIGHT'S SPECIALS",
+            font=get_header_font(58),
+            text_color=TEXT_COLOR,
         )
         title_label.pack(anchor="w")
 
         # Scrollable Content Frame
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=BG_COLOR)
-        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(10, 10))
+        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(5, 5))
 
         content_box = ctk.CTkFrame(self.scroll_frame, fg_color=BG_COLOR)
         content_box.pack(fill="x", expand=True)
@@ -337,10 +559,10 @@ class MenuScreen(ctk.CTkFrame):
         subtitle = ctk.CTkLabel(
             content_box,
             text="Add items to the menu:",
-            font=FONT_SUBTITLE,
+            font=get_label_font(18),
             text_color=TEXT_COLOR,
         )
-        subtitle.pack(pady=(10, 20))
+        subtitle.pack(pady=(10, 15))
 
         # Column Headers
         headers_frame = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
@@ -349,46 +571,48 @@ class MenuScreen(ctk.CTkFrame):
         lbl_name = ctk.CTkLabel(
             headers_frame,
             text="Name",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=320,
+            width=260,
         )
         lbl_name.pack(side="left", padx=5)
 
         lbl_price = ctk.CTkLabel(
             headers_frame,
             text="Price",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=120,
+            width=90,
         )
         lbl_price.pack(side="left", padx=5)
 
         lbl_qty = ctk.CTkLabel(
-            headers_frame, text="Qty", font=FONT_LABEL, text_color=TEXT_COLOR, width=100
+            headers_frame,
+            text="Qty",
+            font=get_body_font(14, "bold"),
+            text_color=TEXT_COLOR,
+            width=70,
         )
         lbl_qty.pack(side="left", padx=5)
 
         lbl_shared = ctk.CTkLabel(
             headers_frame,
             text="Shared?",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=80,
+            width=70,
         )
         lbl_shared.pack(side="left", padx=5)
 
-        # Spacer for X delete button alignment
-        lbl_spacer = ctk.CTkLabel(headers_frame, text="", width=30)
-        lbl_spacer.pack(side="left", padx=5)
+        lbl_spacer = ctk.CTkLabel(headers_frame, text="", width=25)
+        lbl_spacer.pack(side="left", padx=2)
 
         # Dynamic Item Rows Container
         self.items_container = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
-        self.items_container.pack(fill="x", pady=10)
+        self.items_container.pack(fill="x", pady=5)
 
         self.item_row_widgets = []
 
-        # 1 entry row by default (empty with placeholders)
         initial_items = (
             self.app.menu_items
             if self.app.menu_items
@@ -401,69 +625,71 @@ class MenuScreen(ctk.CTkFrame):
         add_btn = ctk.CTkButton(
             content_box,
             text="+ Add item",
-            font=FONT_BUTTON,
+            font=get_body_font(14, "bold"),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             hover_color=HOVER_COLOR,
-            text_color=TEXT_COLOR,
-            width=650,
-            height=45,
+            text_color=MUTED_TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            width=510,
+            height=INPUT_HEIGHT,
             command=lambda: self.add_item_row(),
         )
-        add_btn.pack(pady=15)
+        add_btn.pack(pady=12)
 
         # Tax Section
         tax_label = ctk.CTkLabel(
             content_box,
             text="Enter tax amount:",
-            font=FONT_SUBTITLE,
+            font=get_label_font(18),
             text_color=TEXT_COLOR,
         )
-        tax_label.pack(pady=(30, 10))
+        tax_label.pack(pady=(20, 10))
 
         self.tax_entry = ctk.CTkEntry(
             content_box,
-            placeholder_text="Tax Amount",
-            font=FONT_INPUT,
+            placeholder_text="Amount",
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=250,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=200,
+            height=INPUT_HEIGHT,
             justify="center",
         )
         if self.app.tax_amount > 0:
             self.tax_entry.insert(0, str(self.app.tax_amount))
-        self.tax_entry.pack(pady=10)
+        self.tax_entry.pack(pady=5)
 
-        # Fixed Navigation Footer
+        # Navigation Footer
         nav_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        nav_frame.pack(fill="x", padx=40, pady=20, side="bottom")
+        nav_frame.pack(fill="x", padx=40, pady=15, side="bottom")
 
         prev_btn = ctk.CTkButton(
             nav_frame,
-            text="Prev",
-            font=FONT_NAV,
+            text="PREV",
+            font=get_header_font(20),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            width=90,
+            height=35,
             command=self.go_prev,
         )
         prev_btn.pack(side="left")
 
         next_btn = ctk.CTkButton(
             nav_frame,
-            text="Next",
-            font=FONT_NAV,
+            text="NEXT",
+            font=get_header_font(20),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            width=90,
+            height=35,
             command=self.go_next,
         )
         next_btn.pack(side="right")
@@ -471,31 +697,33 @@ class MenuScreen(ctk.CTkFrame):
     def add_item_row(self, item_data=None):
         row_idx = len(self.item_row_widgets) + 1
         row_frame = ctk.CTkFrame(self.items_container, fg_color=BG_COLOR)
-        row_frame.pack(pady=6)
+        row_frame.pack(pady=ROW_GAP // 2)
 
         entry_name = ctk.CTkEntry(
             row_frame,
-            placeholder_text=f"Name",
-            font=FONT_INPUT,
+            placeholder_text=f"Item Name {row_idx}",
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=320,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=260,
+            height=INPUT_HEIGHT,
         )
         entry_name.pack(side="left", padx=5)
 
         entry_price = ctk.CTkEntry(
             row_frame,
             placeholder_text="Price",
-            font=FONT_INPUT,
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=120,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=90,
+            height=INPUT_HEIGHT,
             justify="center",
         )
         entry_price.pack(side="left", padx=5)
@@ -503,13 +731,14 @@ class MenuScreen(ctk.CTkFrame):
         entry_qty = ctk.CTkEntry(
             row_frame,
             placeholder_text="Qty",
-            font=FONT_INPUT,
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=100,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=70,
+            height=INPUT_HEIGHT,
             justify="center",
         )
         entry_qty.pack(side="left", padx=5)
@@ -522,23 +751,23 @@ class MenuScreen(ctk.CTkFrame):
             border_color=BORDER_COLOR,
             border_width=1,
             checkmark_color=TEXT_COLOR,
-            width=80,
+            width=70,
         )
         chk_shared.pack(side="left", padx=5)
 
         del_btn = ctk.CTkButton(
             row_frame,
             text="✕",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             fg_color="transparent",
             hover_color="#441111",
             text_color=BG_COLOR,
-            width=30,
-            height=45,
+            width=25,
+            height=INPUT_HEIGHT,
             corner_radius=4,
             command=lambda: self.remove_item_row(row_frame, row_dict),
         )
-        del_btn.pack(side="left", padx=5)
+        del_btn.pack(side="left", padx=2)
 
         if item_data:
             if item_data.get("name"):
@@ -558,7 +787,6 @@ class MenuScreen(ctk.CTkFrame):
             "shared": chk_shared,
         }
 
-        # Hover events to reveal delete button
         def on_enter(e):
             del_btn.configure(text_color=DELETE_COLOR)
 
@@ -642,7 +870,6 @@ class MenuScreen(ctk.CTkFrame):
         self.app.menu_items = menu_items
         self.app.tax_amount = tax_amount
 
-        # Initialize order data structure for people if missing
         for person in self.app.people:
             if person not in self.app.orders:
                 self.app.orders[person] = []
@@ -652,102 +879,115 @@ class MenuScreen(ctk.CTkFrame):
 
 
 # ==========================================
-# SCREEN 3: ORDER
+# SCREEN 3: ORDER ("ORDER UP!")
 # ==========================================
 class OrderScreen(ctk.CTkFrame):
     def __init__(self, parent, app: SliceApp):
         super().__init__(parent, fg_color=BG_COLOR)
         self.app = app
 
-        # Static Header Title (Remains fixed at top when scrolling)
+        # Static Header Title
         header_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        header_frame.pack(fill="x", padx=40, pady=(30, 10))
+        header_frame.pack(fill="x", padx=40, pady=(25, 5))
 
         title_label = ctk.CTkLabel(
-            header_frame, text="ORDER", font=FONT_TITLE, text_color=TEXT_COLOR
+            header_frame,
+            text="ORDER UP!",
+            font=get_header_font(64),
+            text_color=TEXT_COLOR,
         )
         title_label.pack(anchor="w")
 
         # Scrollable Content Frame
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=BG_COLOR)
-        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(10, 10))
+        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(5, 5))
 
-        # Main Split Layout
         columns_frame = ctk.CTkFrame(self.scroll_frame, fg_color=BG_COLOR)
-        columns_frame.pack(fill="both", expand=True, pady=10)
+        columns_frame.pack(fill="both", expand=True, pady=5)
 
         # Left Column: Person Order Entry
         self.left_col = ctk.CTkFrame(columns_frame, fg_color=BG_COLOR)
-        self.left_col.pack(side="left", fill="both", expand=True, padx=(0, 40))
+        self.left_col.pack(side="left", fill="both", expand=True, padx=(0, 20))
 
         current_person_name = self.app.people[self.app.current_person_idx]
         self.person_name_label = ctk.CTkLabel(
             self.left_col,
             text=f"{current_person_name}",
-            font=FONT_SUBTITLE,
+            font=get_label_font(20),
             text_color=TEXT_COLOR,
         )
-        self.person_name_label.pack(pady=(0, 20))
+        self.person_name_label.pack(pady=(0, 15))
 
-        # Order Column Headers
         headers_frame = ctk.CTkFrame(self.left_col, fg_color=BG_COLOR)
         headers_frame.pack(pady=5)
 
         lbl_name = ctk.CTkLabel(
             headers_frame,
             text="Name",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=320,
+            width=240,
         )
         lbl_name.pack(side="left", padx=5)
 
         lbl_qty = ctk.CTkLabel(
-            headers_frame, text="Qty", font=FONT_LABEL, text_color=TEXT_COLOR, width=100
+            headers_frame,
+            text="Qty",
+            font=get_body_font(14, "bold"),
+            text_color=TEXT_COLOR,
+            width=80,
         )
         lbl_qty.pack(side="left", padx=5)
 
-        lbl_spacer = ctk.CTkLabel(headers_frame, text="", width=30)
-        lbl_spacer.pack(side="left", padx=5)
+        lbl_spacer = ctk.CTkLabel(headers_frame, text="", width=25)
+        lbl_spacer.pack(side="left", padx=2)
 
-        # Order Rows Container
         self.order_rows_container = ctk.CTkFrame(self.left_col, fg_color=BG_COLOR)
-        self.order_rows_container.pack(pady=10)
+        self.order_rows_container.pack(pady=5)
 
-        # Right Column: Menu Summary
+        # Right Column: Menu Summary Box
         self.right_col = ctk.CTkFrame(columns_frame, fg_color=BG_COLOR)
-        self.right_col.pack(side="right", fill="both", expand=True, padx=(40, 0))
+        self.right_col.pack(side="right", fill="both", expand=True, padx=(20, 0))
 
         menu_summary_title = ctk.CTkLabel(
-            self.right_col, text="Menu", font=FONT_SUBTITLE, text_color=TEXT_COLOR
+            self.right_col, text="Menu", font=get_label_font(20), text_color=TEXT_COLOR
         )
-        menu_summary_title.pack(pady=(0, 20))
+        menu_summary_title.pack(pady=(0, 15))
 
-        menu_headers_frame = ctk.CTkFrame(self.right_col, fg_color=BG_COLOR)
-        menu_headers_frame.pack(fill="x", pady=5)
+        summary_box = ctk.CTkFrame(
+            self.right_col,
+            fg_color=INPUT_BG,
+            border_color=BORDER_COLOR,
+            border_width=1,
+            corner_radius=CORNER_RADIUS,
+        )
+        summary_box.pack(fill="both", expand=True, pady=5)
+
+        menu_headers_frame = ctk.CTkFrame(summary_box, fg_color="transparent")
+        menu_headers_frame.pack(fill="x", pady=8, padx=10)
 
         lbl_mname = ctk.CTkLabel(
             menu_headers_frame,
             text="Name",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=250,
+            width=180,
             anchor="w",
         )
-        lbl_mname.pack(side="left", padx=5)
+        lbl_mname.pack(side="left")
 
         lbl_mqty = ctk.CTkLabel(
             menu_headers_frame,
             text="Qty",
-            font=FONT_LABEL,
+            font=get_body_font(14, "bold"),
             text_color=TEXT_COLOR,
-            width=100,
+            width=80,
             anchor="e",
         )
-        lbl_mqty.pack(side="right", padx=5)
+        lbl_mqty.pack(side="right")
 
-        self.menu_summary_container = ctk.CTkFrame(self.right_col, fg_color=BG_COLOR)
-        self.menu_summary_container.pack(fill="x", pady=10)
+        self.menu_summary_container = ctk.CTkFrame(summary_box, fg_color="transparent")
+        self.menu_summary_container.pack(fill="both", expand=True, pady=5, padx=10)
 
         self.order_row_widgets = []
         self.load_person_order(current_person_name)
@@ -756,81 +996,84 @@ class OrderScreen(ctk.CTkFrame):
         add_btn = ctk.CTkButton(
             self.left_col,
             text="+ Add item",
-            font=FONT_BUTTON,
+            font=get_body_font(14, "bold"),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             hover_color=HOVER_COLOR,
-            text_color=TEXT_COLOR,
-            width=430,
-            height=45,
+            text_color=MUTED_TEXT_COLOR,
+            corner_radius=CORNER_RADIUS,
+            width=350,
+            height=INPUT_HEIGHT,
             command=lambda: self.add_order_row(),
         )
-        add_btn.pack(pady=15)
+        add_btn.pack(pady=12)
 
         # Person Navigation Buttons (Prev / Next Person Order)
         person_nav_frame = ctk.CTkFrame(self.left_col, fg_color=BG_COLOR)
-        person_nav_frame.pack(pady=20)
+        person_nav_frame.pack(pady=10)
 
         self.prev_person_btn = ctk.CTkButton(
             person_nav_frame,
             text="Prev",
-            font=FONT_BUTTON,
+            font=get_body_font(14, "bold"),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            corner_radius=CORNER_RADIUS,
+            width=80,
+            height=35,
             command=self.prev_person,
         )
-        self.prev_person_btn.pack(side="left", padx=10)
+        self.prev_person_btn.pack(side="left", padx=5)
 
         self.next_person_btn = ctk.CTkButton(
             person_nav_frame,
             text="Next",
-            font=FONT_BUTTON,
+            font=get_body_font(14, "bold"),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            corner_radius=CORNER_RADIUS,
+            width=80,
+            height=35,
             command=self.next_person,
         )
-        self.next_person_btn.pack(side="left", padx=10)
+        self.next_person_btn.pack(side="left", padx=5)
 
         self.update_menu_summary()
         self.update_person_nav_buttons()
 
         # Fixed Screen Navigation Footer
         nav_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        nav_frame.pack(fill="x", padx=40, pady=20, side="bottom")
+        nav_frame.pack(fill="x", padx=40, pady=15, side="bottom")
 
         prev_screen_btn = ctk.CTkButton(
             nav_frame,
-            text="Prev",
-            font=FONT_NAV,
+            text="PREV",
+            font=get_header_font(20),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            width=90,
+            height=35,
             command=self.go_prev_screen,
         )
         prev_screen_btn.pack(side="left")
 
         next_screen_btn = ctk.CTkButton(
             nav_frame,
-            text="Next",
-            font=FONT_NAV,
+            text="NEXT",
+            font=get_header_font(20),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            width=90,
+            height=35,
             command=self.go_next_screen,
         )
         next_screen_btn.pack(side="right")
@@ -845,12 +1088,11 @@ class OrderScreen(ctk.CTkFrame):
             for item in existing_orders:
                 self.add_order_row(item["item_name"], str(item["qty"]))
         else:
-            # 1 entry row by default (unselected with placeholder)
             self.add_order_row("", "")
 
     def add_order_row(self, selected_item="", default_qty=""):
         row_frame = ctk.CTkFrame(self.order_rows_container, fg_color=BG_COLOR)
-        row_frame.pack(pady=6)
+        row_frame.pack(pady=ROW_GAP // 2)
 
         menu_names = [m["name"] for m in self.app.menu_items]
         dropdown_options = ["Select item"] + menu_names
@@ -862,16 +1104,17 @@ class OrderScreen(ctk.CTkFrame):
             row_frame,
             variable=item_var,
             values=dropdown_options,
-            font=FONT_INPUT,
-            dropdown_font=FONT_INPUT,
+            font=get_body_font(14),
+            dropdown_font=get_body_font(14),
             fg_color=INPUT_BG,
             button_color=INPUT_BG,
             button_hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
             dropdown_text_color=TEXT_COLOR,
             dropdown_fg_color=INPUT_BG,
-            width=320,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=240,
+            height=INPUT_HEIGHT,
             command=lambda v: self.update_menu_summary(),
         )
         dropdown.pack(side="left", padx=5)
@@ -879,13 +1122,14 @@ class OrderScreen(ctk.CTkFrame):
         entry_qty = ctk.CTkEntry(
             row_frame,
             placeholder_text="Qty",
-            font=FONT_INPUT,
+            font=get_body_font(14),
             fg_color=INPUT_BG,
             border_color=BORDER_COLOR,
             border_width=1,
             text_color=TEXT_COLOR,
-            width=100,
-            height=45,
+            corner_radius=CORNER_RADIUS,
+            width=80,
+            height=INPUT_HEIGHT,
             justify="center",
         )
         if default_qty:
@@ -896,16 +1140,16 @@ class OrderScreen(ctk.CTkFrame):
         del_btn = ctk.CTkButton(
             row_frame,
             text="✕",
-            font=("Arial", 16, "bold"),
+            font=("Arial", 14, "bold"),
             fg_color="transparent",
             hover_color="#441111",
             text_color=BG_COLOR,
-            width=30,
-            height=45,
+            width=25,
+            height=INPUT_HEIGHT,
             corner_radius=4,
             command=lambda: self.remove_order_row(row_frame, row_dict),
         )
-        del_btn.pack(side="left", padx=5)
+        del_btn.pack(side="left", padx=2)
 
         row_dict = {
             "row_frame": row_frame,
@@ -913,7 +1157,6 @@ class OrderScreen(ctk.CTkFrame):
             "qty_entry": entry_qty,
         }
 
-        # Hover events to reveal delete button
         def on_enter(e):
             del_btn.configure(text_color=DELETE_COLOR)
 
@@ -978,12 +1221,10 @@ class OrderScreen(ctk.CTkFrame):
         for widget in self.menu_summary_container.winfo_children():
             widget.destroy()
 
-        # Calculate total ordered quantity per menu item across saved orders + unsaved current inputs
         total_ordered = {m["name"]: 0 for m in self.app.menu_items}
 
         for p_idx, person in enumerate(self.app.people):
             if p_idx == self.app.current_person_idx:
-                # Use current UI entries for active person
                 for row in self.order_row_widgets:
                     iname = row["item_var"].get()
                     qty_str = row["qty_entry"].get().strip()
@@ -992,36 +1233,36 @@ class OrderScreen(ctk.CTkFrame):
                             qty_str
                         )
             else:
-                # Use saved orders for other people
                 for item in self.app.orders.get(person, []):
                     iname = item["item_name"]
                     total_ordered[iname] = total_ordered.get(iname, 0) + item["qty"]
 
-        # Render menu summary items
         for idx, item in enumerate(self.app.menu_items, start=1):
-            row_frame = ctk.CTkFrame(self.menu_summary_container, fg_color=BG_COLOR)
-            row_frame.pack(fill="x", pady=4)
+            row_frame = ctk.CTkFrame(
+                self.menu_summary_container, fg_color="transparent"
+            )
+            row_frame.pack(fill="x", pady=3)
 
             name_text = f"{idx}. {item['name']}"
             lbl_name = ctk.CTkLabel(
                 row_frame,
                 text=name_text,
-                font=FONT_INPUT,
+                font=get_body_font(13),
                 text_color=TEXT_COLOR,
                 anchor="w",
             )
             lbl_name.pack(side="left", padx=5)
 
             if item["shared"]:
-                qty_text = f"Qty {total_ordered.get(item['name'], 0)} (Shared)"
+                qty_text = f"{total_ordered.get(item['name'], 0)} (Shared)"
             else:
                 rem_qty = max(0, item["qty"] - total_ordered.get(item["name"], 0))
-                qty_text = f"Qty {rem_qty}"
+                qty_text = f"{rem_qty}"
 
             lbl_qty = ctk.CTkLabel(
                 row_frame,
                 text=qty_text,
-                font=FONT_INPUT,
+                font=get_body_font(13),
                 text_color=TEXT_COLOR,
                 anchor="e",
             )
@@ -1066,25 +1307,28 @@ class OrderScreen(ctk.CTkFrame):
 
 
 # ==========================================
-# SCREEN 4: DISPLAY
+# SCREEN 4: DISPLAY ("THE SCORE'S SETTLED")
 # ==========================================
 class DisplayScreen(ctk.CTkFrame):
     def __init__(self, parent, app: SliceApp):
         super().__init__(parent, fg_color=BG_COLOR)
         self.app = app
 
-        # Static Header Title (Remains fixed at top when scrolling)
+        # Static Header Title
         header_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        header_frame.pack(fill="x", padx=40, pady=(30, 10))
+        header_frame.pack(fill="x", padx=40, pady=(25, 5))
 
         title_label = ctk.CTkLabel(
-            header_frame, text="DISPLAY", font=FONT_TITLE, text_color=TEXT_COLOR
+            header_frame,
+            text="THE SCORE'S SETTLED",
+            font=get_header_font(58),
+            text_color=TEXT_COLOR,
         )
         title_label.pack(anchor="w")
 
         # Scrollable Content Frame
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=BG_COLOR)
-        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(10, 10))
+        self.scroll_frame.pack(fill="both", expand=True, padx=40, pady=(5, 5))
 
         content_box = ctk.CTkFrame(self.scroll_frame, fg_color=BG_COLOR)
         content_box.pack(fill="x", expand=True)
@@ -1096,97 +1340,107 @@ class DisplayScreen(ctk.CTkFrame):
         lbl_name = ctk.CTkLabel(
             headers_frame,
             text="Name",
-            font=FONT_LABEL,
+            font=get_label_font(16),
             text_color=TEXT_COLOR,
-            width=380,
+            width=280,
         )
-        lbl_name.pack(side="left", padx=10)
+        lbl_name.pack(side="left", padx=5)
 
         lbl_amount = ctk.CTkLabel(
             headers_frame,
             text="Amount",
-            font=FONT_LABEL,
+            font=get_label_font(16),
             text_color=TEXT_COLOR,
-            width=150,
+            width=120,
         )
-        lbl_amount.pack(side="left", padx=10)
+        lbl_amount.pack(side="left", padx=5)
 
         # Calculate Payable Amounts
         bills, grand_total = self.app.calculate_bills()
 
         # Render Person Amount Rows
         rows_container = ctk.CTkFrame(content_box, fg_color=BG_COLOR)
-        rows_container.pack(pady=10)
+        rows_container.pack(pady=5)
 
         for person, amt in bills.items():
             row_frame = ctk.CTkFrame(rows_container, fg_color=BG_COLOR)
-            row_frame.pack(pady=6)
+            row_frame.pack(pady=ROW_GAP // 2)
 
             name_box = ctk.CTkLabel(
                 row_frame,
                 text=person,
-                font=FONT_INPUT,
+                font=get_body_font(14),
                 fg_color=INPUT_BG,
-                corner_radius=0,
+                corner_radius=CORNER_RADIUS,
                 text_color=TEXT_COLOR,
-                width=380,
-                height=45,
+                width=280,
+                height=INPUT_HEIGHT,
             )
-            name_box.pack(side="left", padx=10)
+            name_box.pack(side="left", padx=5)
 
             amt_box = ctk.CTkLabel(
                 row_frame,
                 text=f"Rs. {amt:.2f}",
-                font=FONT_INPUT,
+                font=get_body_font(14),
                 fg_color=INPUT_BG,
-                corner_radius=0,
+                corner_radius=CORNER_RADIUS,
                 text_color=TEXT_COLOR,
-                width=150,
-                height=45,
+                width=120,
+                height=INPUT_HEIGHT,
             )
-            amt_box.pack(side="left", padx=10)
+            amt_box.pack(side="left", padx=5)
 
         # Grand Total Section
         total_label = ctk.CTkLabel(
-            content_box, text="Total", font=FONT_SUBTITLE, text_color=TEXT_COLOR
+            content_box,
+            text="Total Amount",
+            font=get_label_font(18),
+            text_color=TEXT_COLOR,
         )
-        total_label.pack(pady=(30, 10))
+        total_label.pack(pady=(20, 5))
 
         total_box = ctk.CTkLabel(
             content_box,
             text=f"Rs. {grand_total:.2f}",
-            font=FONT_INPUT,
+            font=get_body_font(14, "bold"),
             fg_color=INPUT_BG,
-            corner_radius=0,
+            corner_radius=CORNER_RADIUS,
             text_color=TEXT_COLOR,
-            width=250,
-            height=45,
+            width=200,
+            height=INPUT_HEIGHT,
         )
-        total_box.pack(pady=10)
+        total_box.pack(pady=5)
 
-        # Payer Message Section
+        # Payer Message Section & Thank You Footer
         payer_msg_label = ctk.CTkLabel(
             content_box,
-            text=f"Pay {self.app.payer}\nThank you!",
-            font=FONT_SUBTITLE,
+            text=f"Pay {self.app.payer}",
+            font=get_label_font(18),
             text_color=TEXT_COLOR,
-            justify="center",
         )
-        payer_msg_label.pack(pady=(40, 20))
+        payer_msg_label.pack(pady=(25, 5))
 
-        # Fixed Screen Navigation Footer
+        thank_you_label = ctk.CTkLabel(
+            content_box,
+            text="THANK YOU!",
+            font=get_black_font(64),
+            text_color=TEXT_COLOR,
+        )
+        thank_you_label.pack(pady=(5, 20))
+
+        # Navigation Footer
         nav_frame = ctk.CTkFrame(self, fg_color=BG_COLOR)
-        nav_frame.pack(fill="x", padx=40, pady=20, side="bottom")
+        nav_frame.pack(fill="x", padx=40, pady=15, side="bottom")
 
         prev_screen_btn = ctk.CTkButton(
             nav_frame,
-            text="Prev",
-            font=FONT_NAV,
+            text="PREV",
+            font=get_header_font(20),
             fg_color="transparent",
             hover_color=HOVER_COLOR,
             text_color=TEXT_COLOR,
-            width=100,
-            height=40,
+            width=90,
+            height=35,
             command=self.go_prev_screen,
         )
         prev_screen_btn.pack(side="left")

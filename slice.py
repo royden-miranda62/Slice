@@ -20,6 +20,16 @@ orders = []
 bill = []
 
 
+"""STAGE 0 - WELCOME"""
+print("=== SLICE ===")
+print("A user-friendly bill splitter.")
+
+venue = input("Venue: ")
+date = input("Date (dd/mm/yyyy): ")
+
+print()
+
+
 """STAGE 1 - PEOPLE"""
 
 num_people = int(input("Enter the number of people: "))
@@ -94,15 +104,13 @@ for person in people:
                 print("Invalid quantity. Input a positive quantity.")
             else:
                 if item_chosen[4] == True:  # if item is shared
-                    item_chosen[
-                        5
-                    ] += qty_chosen  # chosen quantity can exceed total quantity
+                    item_chosen[5] += qty_chosen
+                    # chosen quantity can exceed total quantity
                     print(f"{qty_chosen} x {item_chosen[0]} added.")
                     break
                 else:  # if item is not shared
-                    if (
-                        qty_chosen + item_chosen[5] > item_chosen[2]
-                    ):  # chosen quantity cannot exceed total quantity
+                    if qty_chosen + item_chosen[5] > item_chosen[2]:
+                        # chosen quantity cannot exceed total quantity
                         print(f"Cannot add {qty_chosen} of {item_chosen[0]}.")
                     else:
                         item_chosen[5] += qty_chosen
@@ -123,35 +131,39 @@ for person in people:
 
     print()
 
-# logic to edit an order
-edit_choice = input("Edit? (Y/N)")
+# editing an order
+edit_choice = input("Edit an order? (Y/N)")
 if edit_choice in "yY":
-    print(f"Choose person's order to edit (1-{num_people})")
-    for id, person in enumerate(people, start=1):
-        print(f"{id}. {person}")
-    edit_id = int(input("    -> ")) - 1
-
-    order = orders[edit_id]  # locate person in orders
-    print(f"Choose item to edit (1-{len(order)})")
-    for id, item in enumerate(order):
-        print(f"{id}. {item[0]}")
-    item_choice = int(input("    -> ")) - 1
-
-    edit_item = order[item_choice]  # locate item in order
-    old_qty = edit_item[1]
-    menu_item = menu[edit_item[0]]  # map item to menu
-
-    menu_item[5] -= old_qty  # subtract old quantity from ordered quantity
     while True:
-        new_qty = int(input("Enter quantity: "))
-        if new_qty <= 0 or (new_qty + menu_item[5] > menu_item[2]):
-            print("Invalid quantity.")
-        else:
-            menu_item[5] += new_qty  # add new quantity to ordered quantity
-            edit_item[1] = new_qty  # update item order quantity
-            print(f"{menu_item[0]} quantity updated to {new_qty}.")
-            break
+        print(f"Choose person's order to edit (1-{num_people})")
+        for id, person in enumerate(people, start=1):
+            print(f"{id}. {person}")
+        edit_id = int(input("    -> ")) - 1
 
+        order = orders[edit_id]  # locate person in orders
+        print(f"Choose item to edit (1-{len(order)})")
+        for id, item in enumerate(order):
+            print(f"{id}. {item[0]}")
+        item_choice = int(input("    -> ")) - 1
+
+        edit_item = order[item_choice]  # locate item in order
+        old_qty = edit_item[1]
+        menu_item = menu[edit_item[0]]  # map item to menu
+
+        menu_item[5] -= old_qty  # subtract old quantity from ordered quantity
+        while True:
+            new_qty = int(input("Enter quantity: "))
+            if new_qty <= 0 or (new_qty + menu_item[5] > menu_item[2]):
+                print("Invalid quantity.")
+            else:
+                menu_item[5] += new_qty  # add new quantity to ordered quantity
+                edit_item[1] = new_qty  # update item order quantity
+                print(f"{menu_item[0]} quantity updated to {new_qty}.")
+                break
+
+        edit_more_choice = input("Edit another order? (Y/N): ")
+        if edit_more_choice in "nN":
+            break
 
 print()
 
@@ -178,9 +190,14 @@ for order in orders:
 
     bill.append(bill_amount)
 
+print()
+
+
 """ STAGE 5 - DISPLAY   """
+
 print("Final Amounts\n")
 for i in range(num_people):
     print(f"{people[i]}: Rs. {round(bill[i], 2)}")
 print(f"Total = {sum(bill)}")
 print(f"Pay amount to {people[payer_id]}")
+print("THANK YOU")
